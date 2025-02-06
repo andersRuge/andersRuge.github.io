@@ -8,13 +8,11 @@
     <title>Microsoft Teams WebEngage widget page</title>
   </head>
   <body>
-    <!-- Microsoft Teams SDK -->
     <script src="https://statics.teams.cdn.office.net/sdk/v1.11.0/js/MicrosoftTeams.min.js"></script>
     
     <script>
       var teamsInitialized = false;
 
-      // Initialize Microsoft Teams
       microsoftTeams.initialize(() => {
         teamsInitialized = true;
         microsoftTeams.getContext((context, error) => {
@@ -23,26 +21,31 @@
             return;
           }
 
-          // Load Puzzel script and initialize with Teams context
           (function (a, b) {      
             var loader = a.createElement('script');
             loader.type = 'text/javascript';
             loader.src = 'https://app-cdn.puzzel.com/public/js/pzl_loader.js';
             loader.setAttribute('id', 'pzlModuleLoader');
             loader.setAttribute('data-customer-id', b);
+            
+            // Wait for Puzzel API to be ready
             loader.onload = function() {
-              // Set Puzzel claims after script has loaded
-              pzl.api.setClaims({
-                "full_context": context,
-                "user_email": context.upn
-              });
+              const checkPzlReady = setInterval(() => {
+                if (window.pzl && window.pzl.api) {
+                  clearInterval(checkPzlReady);
+                  window.pzl.api.setClaims({
+                    "full_context": context,
+                    "user_email": context.upn
+                  });
+                }
+              }, 100);
             };
+            
             a.body.appendChild(loader);
           })(document, '99201');
         });
       });
 
-      // Check if Teams initialization failed
       setTimeout(() => {
         if (!teamsInitialized) {
           const message = document.createElement('div');
