@@ -8,37 +8,30 @@
     <title>Microsoft Teams WebEngage widget page</title>
   </head>
   <body>
-    <script src="https://statics.teams.cdn.office.net/sdk/v1.11.0/js/MicrosoftTeams.min.js"></script>
+    <script src="msteams.min.js" type="text/javascript"></script>
     <script>
       var teamsInitialized = false;
       microsoftTeams.initialize(() => {
         teamsInitialized = true;
-        microsoftTeams.getContext((context, error) => {
-          if (error) {
-            console.error('Error getting context:', error);
-            return;
-          }
-          (function (a, b) {      
+        microsoftTeams.getContext((context, error) => {(function (a, b) {      
             var loader = a.createElement('script');
             loader.type = 'text/javascript';
             loader.src = 'https://app-cdn.puzzel.com/public/js/pzl_loader.js';
             loader.setAttribute('id', 'pzlModuleLoader');
             loader.setAttribute('data-customer-id', b);
-            a.body.appendChild(loader);
+            a.body.append(loader);
           })(document, '99201');
-          
           pzl.api.setClaims({
             "full_context": context,
             "user_email": context.upn
           });
         });
       });
-
       setTimeout(() => {
-        if (!teamsInitialized) {
-          const message = document.createElement('div');
-          message.textContent = 'This page does not work unless opened via Teams';
-          document.body.appendChild(message);
+         if (!teamsInitialized) {
+          document.getElementById('mainjs').insertAdjacentText('afterend',
+            'This page does not work unless opened via Teams',
+          );
         }
       }, 5000);
     </script>
