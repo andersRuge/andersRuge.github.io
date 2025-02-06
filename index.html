@@ -1,26 +1,55 @@
-<script>
-  var teamsInitialized = false;
-  microsoftTeams.initialize(() => {
-    teamsInitialized = true;
-    microsoftTeams.getContext((context, error) => {
-      if (error) {
-        console.error('Error getting context:', error);
-        return;
-      }
-      (function (a, b) {      
-        var loader = a.createElement('script');
-        loader.type = 'text/javascript';
-        loader.src = 'https://app-cdn.puzzel.com/public/js/pzl_loader.js';
-        loader.setAttribute('id', 'pzlModuleLoader');
-        loader.setAttribute('data-customer-id', b);
-        loader.onload = function() {
-          pzl.api.setClaims({
-            "full_context": context,
-            "user_email": context.upn
-          });
-        };
-        a.body.appendChild(loader);
-      })(document, '99201');
-    });
-  });
-</script>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <link rel="icon" href="favicon.ico">
+    <title>Microsoft Teams WebEngage widget page</title>
+  </head>
+  <body>
+    <!-- Microsoft Teams SDK -->
+    <script src="https://statics.teams.cdn.office.net/sdk/v1.11.0/js/MicrosoftTeams.min.js"></script>
+    
+    <script>
+      var teamsInitialized = false;
+
+      // Initialize Microsoft Teams
+      microsoftTeams.initialize(() => {
+        teamsInitialized = true;
+        microsoftTeams.getContext((context, error) => {
+          if (error) {
+            console.error('Error getting context:', error);
+            return;
+          }
+
+          // Load Puzzel script and initialize with Teams context
+          (function (a, b) {      
+            var loader = a.createElement('script');
+            loader.type = 'text/javascript';
+            loader.src = 'https://app-cdn.puzzel.com/public/js/pzl_loader.js';
+            loader.setAttribute('id', 'pzlModuleLoader');
+            loader.setAttribute('data-customer-id', b);
+            loader.onload = function() {
+              // Set Puzzel claims after script has loaded
+              pzl.api.setClaims({
+                "full_context": context,
+                "user_email": context.upn
+              });
+            };
+            a.body.appendChild(loader);
+          })(document, '99201');
+        });
+      });
+
+      // Check if Teams initialization failed
+      setTimeout(() => {
+        if (!teamsInitialized) {
+          const message = document.createElement('div');
+          message.textContent = 'This page does not work unless opened via Teams';
+          document.body.appendChild(message);
+        }
+      }, 5000);
+    </script>
+  </body>
+</html>
