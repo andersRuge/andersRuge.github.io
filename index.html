@@ -1,55 +1,88 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1.0">
-    <meta name="robots" content="noindex">
-    <link rel="icon" href="favicon.ico">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <link rel="icon" href="favicon.ico" />
     <title>Microsoft Teams WebEngage widget page</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      /* Ensure the widget container is responsive */
+      #pzl-widget-container {
+        position: relative;
+        width: 100%;
+        height: 100vh;
+      }
+
+      /* Style for iframe created by Puzzel */
+      iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100% !important;
+        height: 100% !important;
+        border: none;
+      }
+    </style>
   </head>
   <body>
+    <div id="pzl-widget-container"></div>
     <script src="https://statics.teams.cdn.office.net/sdk/v1.11.0/js/MicrosoftTeams.min.js"></script>
-    
     <script>
       var teamsInitialized = false;
-
       microsoftTeams.initialize(() => {
         teamsInitialized = true;
         microsoftTeams.getContext((context, error) => {
           if (error) {
-            console.error('Error getting context:', error);
+            console.error("Error getting context:", error);
             return;
           }
+          (function (a, b) {
+            var loader = a.createElement("script");
+            loader.type = "text/javascript";
+            loader.src = "https://app-cdn.puzzel.com/public/js/pzl_loader.js";
+            loader.setAttribute("id", "pzlModuleLoader");
+            loader.setAttribute("data-customer-id", b);
+            loader.setAttribute("data-container", "pzl-widget-container");
 
-          (function (a, b) {      
-            var loader = a.createElement('script');
-            loader.type = 'text/javascript';
-            loader.src = 'https://app-cdn.puzzel.com/public/js/pzl_loader.js';
-            loader.setAttribute('id', 'pzlModuleLoader');
-            loader.setAttribute('data-customer-id', b);
-            
             // Wait for Puzzel API to be ready
-            loader.onload = function() {
+            loader.onload = function () {
               const checkPzlReady = setInterval(() => {
                 if (window.pzl && window.pzl.api) {
                   clearInterval(checkPzlReady);
                   window.pzl.api.setClaims({
-                    "full_context": context,
-                    "user_email": context.upn
+                    full_context: context,
+                    user_email: context.upn,
+                  });
+
+                  // Add resize handler
+                  window.addEventListener("resize", () => {
+                    if (window.pzl && window.pzl.api) {
+                      window.pzl.api.resize();
+                    }
                   });
                 }
               }, 100);
             };
-            
             a.body.appendChild(loader);
-          })(document, '99201');
+          })(document, "99201");
         });
       });
 
       setTimeout(() => {
         if (!teamsInitialized) {
-          const message = document.createElement('div');
-          message.textContent = 'This page does not work unless opened via Teams';
+          const message = document.createElement("div");
+          message.textContent =
+            "This page does not work unless opened via Teams";
           document.body.appendChild(message);
         }
       }, 5000);
