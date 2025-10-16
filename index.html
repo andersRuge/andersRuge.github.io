@@ -1,91 +1,242 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <meta name="robots" content="noindex" />
-    <link rel="icon" href="favicon.ico" />
-    <title>Microsoft Teams WebEngage widget page</title>
-    <style>
-      html,
-      body {
-        margin: 0;
-        padding: 0;
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-      }
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>Puzzel Chat Widget (Puzzel-only)</title>
+  <style>
+    html,body{height:100%;margin:0;padding:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial;}
+    #pzl-widget-container{position:relative;width:100%;height:100vh;min-height:320px;background:#fff;}
+    #pzl-widget-container iframe{position:absolute;top:0;left:0;width:100% !important;height:100% !important;border:0}
+    #status{
+      position:fixed;left:12px;top:12px;z-index:9999;background:rgba(255,255,255,0.95);
+      padding:8px 10px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.08);
+    }
+  </style>
+</head>
+<body>
+  <div id="status">Initializing Puzzel chat...</div>
+  <div id="pzl-widget-container" aria-live="polite"></div>
 
-      /* Ensure the widget container is responsive */
-      #pzl-widget-container {
-        position: relative;
-        width: 100%;
-        height: 100vh;
-      }
+  <script>
+  (function () {
+    const CUSTOMER_ID = "99201"; // change to your Puzzel customer id
+    const CONTAINER_ID = "pzl-widget-container";
+    const STATUS_EL = document.getElementById("status");
 
-      /* Style for iframe created by Puzzel */
-      iframe {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100% !important;
-        height: 100% !important;
-        border: none;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="pzl-widget-container"></div>
-    <script src="https://statics.teams.cdn.office.net/sdk/v1.11.0/js/MicrosoftTeams.min.js"></script>
-    <script>
-      var teamsInitialized = false;
-      microsoftTeams.initialize(() => {
-        teamsInitialized = true;
-        microsoftTeams.getContext((context, error) => {
-          if (error) {
-            console.error("Error getting context:", error);
-            return;
-          }
-          (function (a, b) {
-            var loader = a.createElement("script");
-            loader.type = "text/javascript";
-            loader.src = "https://app-cdn.puzzel.com/public/js/pzl_loader.js";
-            loader.setAttribute("id", "pzlModuleLoader");
-            loader.setAttribute("data-customer-id", b);
-            loader.setAttribute("data-container", "pzl-widget-container");
+    function setStatus(text) {
+      STATUS_EL.textContent = text || "";
+    }
 
-            // Wait for Puzzel API to be ready
-            loader.onload = function () {
-              const checkPzlReady = setInterval(() => {
-                if (window.pzl && window.pzl.api) {
-                  clearInterval(checkPzlReady);
-                  window.pzl.api.setClaims({
-                    full_context: context,
-                    user_email: context.upn,
-                  });
+    function getSearchParam(name) {
+      const m = new RegExp("[?&]" + name + "=([^&#]*)").exec(location.search);
+      return m ? decodeURIComponent(m[1]) : null;
+    }
 
-                  // Add resize handler
-                  window.addEventListener("resize", () => {
-                    if (window.pzl && window.pzl.api) {
-                      window.pzl.api.resize();
-                    }
-                  });
-                }
-              }, 100);
-            };
-            a.body.appendChild(loader);
-          })(document, "99201");
-        });
+    // Safely load a script
+    function loadScript(src, attributes = {}) {
+      return new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.type = "text/javascript";
+        s.src = src;
+        Object.keys(attributes).forEach(k => s.setAttribute(k, attributes[k]));
+        s.onload = () => resolve();
+        s.onerror = (e) => reject(new Error("Failed to load " + src));
+        document.head.appendChild(s);
       });
+    }
 
-      setTimeout(() => {
-        if (!teamsInitialized) {
-          const message = document.createElement("div");
-          message.textContent =
-            "This page does not work unless opened via Teams";
-          document.body.appendChild(message);
+    // Inject the official Puzzel loader and attach data attributes for container/customer
+    function injectPuzzelLoader(attrs = {}) {
+      return new Promise((resolve, reject) => {
+        const existing = document.getElementById("pzlModuleLoader");
+        if (existing) existing.remove();
+
+        const loader = document.createElement("script");
+        loader.type = "text/javascript";
+        loader.id = "pzlModuleLoader";
+        loader.src = attrs.src || "https://app-cdn.puzzel.com/public/js/pzl_loader.js";
+        loader.setAttribute("data-customer-id", attrs.customerId || CUSTOMER_ID);
+        loader.setAttribute("data-container", attrs.container || CONTAINER_ID);
+
+        // optional: hint which widget to render if your loader supports it
+        if (attrs.widget) loader.setAttribute("data-widget", attrs.widget);
+
+        loader.onload = () => resolve();
+        loader.onerror = (e) => reject(new Error("Failed to load pzl_loader.js"));
+        document.body.appendChild(loader);
+      });
+    }
+
+    // Try to initialise chat using known safe entry points (best-effort, non-destructive)
+    async function initChatWithPzlApi(claims, config) {
+      // Wait for window.pzl.api to appear (loader created it)
+      const deadline = Date.now() + 10000;
+      while (Date.now() < deadline) {
+        if (window.pzl && window.pzl.api) break;
+        await new Promise(r => setTimeout(r, 100));
+      }
+      if (!(window.pzl && window.pzl.api)) {
+        throw new Error("window.pzl.api not available after loader");
+      }
+
+      // Set claims (what the widget usually expects)
+      try {
+        if (typeof window.pzl.api.setClaims === "function") {
+          window.pzl.api.setClaims(claims || {});
         }
-      }, 5000);
-    </script>
-  </body>
+      } catch (e) {
+        console.warn("setClaims failed:", e);
+      }
+
+      // Try common, safe ways to open a chat:
+      // 1) If an API helper exists like openChat
+      if (typeof window.pzl.api.openChat === "function") {
+        try {
+          // Many Puzzel APIs accept a container id or options; best-effort call
+          await window.pzl.api.openChat({ container: CONTAINER_ID, config: config || {} });
+          return true;
+        } catch (e) {
+          console.warn("openChat attempt failed:", e);
+        }
+      }
+
+      // 2) If the loader exposes a configureWidget function (legacy/hosted widget configs)
+      if (typeof window.configureWidget === "function") {
+        try {
+          window.widgetObj = window.configureWidget(config || { type: "chat", container: CONTAINER_ID });
+          return true;
+        } catch (e) {
+          console.warn("configureWidget attempt failed:", e);
+        }
+      }
+
+      // 3) If none of the above, assume loader will auto-render into the container when claims/config are set.
+      return true;
+    }
+
+    async function main() {
+      setStatus("Connecting to Puzzel host...");
+      // Try to connect to Puzzel host via widgetApiLib.connect()
+      try {
+        // If widgetApiLib isn't available as a global, try to load likely relative endpoints where it may be hosted.
+        if (typeof widgetApiLib === "undefined") {
+          const hostPaths = [
+            "/static/puzzel-api.min.js",
+            "/puzzel-api.min.js",
+            "/static/widget-api/puzzel-api.min.js",
+            "puzzel-api.min.js"
+          ];
+          for (const p of hostPaths) {
+            try {
+              // guard: don't throw if path 404s, keep trying
+              // Note: loading a wrong path will produce a console 404 but that's fine for best-effort.
+              // Some Puzzel installs already inject this script – if so, this loop will skip quickly.
+              // We await short time to allow it to expose the global.
+              await loadScript(p).catch(() => {});
+              if (typeof widgetApiLib !== "undefined") break;
+              // small delay
+              await new Promise(r => setTimeout(r, 150));
+            } catch (_) { /* ignore */ }
+          }
+        }
+
+        if (typeof widgetApiLib === "undefined" || typeof widgetApiLib.connect !== "function") {
+          throw new Error("widgetApiLib.connect() not available in host");
+        }
+
+        const api = await widgetApiLib.connect();
+        setStatus("Connected. Fetching agent/auth info...");
+
+        // keys to fetch
+        const puzzelKeys = [
+          "agent.firstName",
+          "agent.lastName",
+          "agent.userName",
+          "agent.currentProfile",
+          "auth.userName",
+          "auth.userId",
+          "auth.customerKey",
+          "auth.customerId"
+        ];
+
+        // fetch all keys in parallel, ignore errors per-key
+        const results = await Promise.all(puzzelKeys.map(k => (typeof api.get === "function" ? api.get(k).catch(() => null) : Promise.resolve(null))));
+        const puzzel_info = {};
+        results.forEach((res, idx) => { puzzel_info[puzzelKeys[idx]] = res; });
+
+        // If you provide a config via ?config_id=ID, load that script (like your supchat example)
+        const configId = getSearchParam("config_id");
+        let config = null;
+        if (configId) {
+          try {
+            const cfgUrl = `${location.protocol}//${location.host}/static/widget-configs/${encodeURIComponent(configId)}.js`;
+            await loadScript(cfgUrl);
+            // widget config files typically set a global `config` object. We read it if present.
+            if (typeof config === "undefined" && window.config) {
+              config = window.config;
+            }
+          } catch (e) {
+            console.warn("Could not load config script for id:", configId, e);
+          }
+        }
+
+        // ensure config exists so code below can reference defaults
+        config = config || {};
+        // encourage fullscreen-like behaviour inside Puzzel
+        config.height = config.height || "100%";
+        config.width = config.width || "100%";
+        config.disableWidgetToggle = true;
+        config.insertButton = false;
+        // needed for some hosts to allow cookies in cross-site contexts
+        config.cookieSameSite = "none";
+
+        // claims to pass into the widget
+        const claims = {
+          full_context: puzzel_info,
+          user_email: puzzel_info["auth.userName"] || null,
+          puzzel_info
+        };
+
+        setStatus("Loading Puzzel loader...");
+        // inject loader with a hint to render chat (data-widget="chat" is harmless if the loader ignores it)
+        await injectPuzzelLoader({ customerId: CUSTOMER_ID, container: CONTAINER_ID, widget: "chat" });
+
+        setStatus("Initialising chat widget...");
+        // best-effort initialisation path
+        await initChatWithPzlApi(claims, config);
+
+        // final UI finish
+        setStatus("");
+        // ensure the loader or widget receives resize events
+        window.addEventListener("resize", () => {
+          try {
+            if (window.pzl && window.pzl.api && typeof window.pzl.api.resize === "function") window.pzl.api.resize();
+          } catch (e) { /* ignore */ }
+        });
+
+      } catch (err) {
+        console.error("Puzzel-only flow failed:", err);
+        setStatus("This page must be opened inside Puzzel. Check console for details.");
+        // helpful visible message for debugging in Puzzel environment
+        const help = document.createElement("div");
+        help.style.position = "absolute";
+        help.style.left = "16px";
+        help.style.top = "60px";
+        help.style.right = "16px";
+        help.style.background = "rgba(255,255,255,0.95)";
+        help.style.padding = "12px";
+        help.style.borderRadius = "8px";
+        help.innerHTML = `<strong>Puzzel-only widget</strong><div style="margin-top:8px">Open this page inside the Puzzel app. If you see this message inside Puzzel, check console logs.</div>`;
+        document.body.appendChild(help);
+      }
+    }
+
+    // run
+    main();
+  })();
+  </script>
+</body>
 </html>
+
