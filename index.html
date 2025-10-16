@@ -19,6 +19,7 @@
 <body>
   <div id="status">Loading Puzzel Information...</div>
   <div id="pzl-widget-container"></div>
+  <script type="text/javascript" src="puzzel-api.min.js"></script>
   <script>
   (function () {
     const CUSTOMER_ID = "99201";
@@ -28,8 +29,15 @@
 
     async function main() {
       try {
-        if (typeof widgetApiLib === "undefined" || typeof widgetApiLib.connect !== "function") {
-          throw new Error("widgetApiLib.connect() not available. This page must be opened inside Puzzel.");
+        statusEl.textContent = "Initializing...";
+
+        const maxWait = 5000;
+        const startTime = Date.now();
+        while (typeof widgetApiLib === "undefined" || typeof widgetApiLib.connect !== "function") {
+          if (Date.now() - startTime > maxWait) {
+            throw new Error("widgetApiLib.connect() not available. This page must be opened inside Puzzel.");
+          }
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
 
         statusEl.textContent = "Connecting to Puzzel...";
