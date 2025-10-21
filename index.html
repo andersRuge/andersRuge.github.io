@@ -57,7 +57,7 @@
 	  "auth.getPuzzelIDAccessToken"
         ];
 
-        const results = await Promise.all(puzzelApis.map((k) => api.get(k).catch(() => null)));
+        const results = await Promise.all(puzzelApis.map((k) => api.call(k).catch((error) => console.log(error))));
         const puzzel_info = {};
         results.forEach((result, index) => {
           puzzel_info[puzzelApis[index]] = result;
