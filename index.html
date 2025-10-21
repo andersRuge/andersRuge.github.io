@@ -29,22 +29,25 @@
     let puzzelInitialized = false;
     let puzzelInfoData = null;
 
-    window.pzlOnBeforeBootstrap = function() {
-      console.log("pzlOnBeforeBootstrap called, puzzelInfoData:", puzzelInfoData);
+    window.pzlOnBeforeStartChat = function(data) {
+      console.log("pzlOnBeforeStartChat called with data:", data);
+      console.log("puzzelInfoData:", puzzelInfoData);
       if (puzzelInfoData) {
-        const claims = {
+        const modifiedData = {
+          ...data,
           visitorClaims: {
+            ...(data.visitorClaims || {}),
             full_context: puzzelInfoData,
             user_email: puzzelInfoData["auth.userName"] || puzzelInfoData["agent.userName"],
             access_token: puzzelInfoData["auth.getPuzzelIDAccessToken"],
             puzzel_info: puzzelInfoData
           }
         };
-        console.log("Returning visitor claims:", claims);
-        return claims;
+        console.log("Returning modified data with claims:", modifiedData);
+        return modifiedData;
       }
-      console.log("No puzzelInfoData available yet");
-      return {};
+      console.log("No puzzelInfoData available, returning original data");
+      return data;
     };
 
     async function main() {
