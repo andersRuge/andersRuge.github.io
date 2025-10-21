@@ -53,7 +53,8 @@
           "auth.userName",
           "auth.userId",
           "auth.customerKey",
-          "auth.customerId"
+          "auth.customerId",
+	  "auth.getPuzzelIDAccessToken"
         ];
 
         const results = await Promise.all(puzzelApis.map((k) => api.get(k).catch(() => null)));
