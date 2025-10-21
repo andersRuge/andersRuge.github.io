@@ -72,12 +72,18 @@
 	  "auth.getPuzzelIDAccessToken"
         ];
 
-        const results = await Promise.all(puzzelApis.map((k) => api.call(k).catch((error) => console.log(error))));
+        const results = await Promise.all(puzzelApis.map((k) => api.call(k).catch((error) => {
+          console.log(`Failed to fetch ${k}:`, error);
+          return undefined;
+        })));
         const puzzel_info = {};
         results.forEach((result, index) => {
-          puzzel_info[puzzelApis[index]] = result;
+          if (result !== undefined) {
+            puzzel_info[puzzelApis[index]] = result;
+          }
         });
 
+        console.log("Fetched Puzzel info:", puzzel_info);
         puzzelInfoData = puzzel_info;
 
         statusEl.textContent = "Loading Puzzel chat widget...";
