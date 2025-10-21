@@ -30,8 +30,9 @@
     let puzzelInfoData = null;
 
     window.pzlOnBeforeBootstrap = function() {
+      console.log("pzlOnBeforeBootstrap called, puzzelInfoData:", puzzelInfoData);
       if (puzzelInfoData) {
-        return {
+        const claims = {
           visitorClaims: {
             full_context: puzzelInfoData,
             user_email: puzzelInfoData["auth.userName"] || puzzelInfoData["agent.userName"],
@@ -39,7 +40,10 @@
             puzzel_info: puzzelInfoData
           }
         };
+        console.log("Returning visitor claims:", claims);
+        return claims;
       }
+      console.log("No puzzelInfoData available yet");
       return {};
     };
 
