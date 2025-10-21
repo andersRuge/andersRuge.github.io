@@ -27,6 +27,21 @@
     const CONTAINER_ID = "pzl-widget-container";
     const statusEl = document.getElementById("status");
     let puzzelInitialized = false;
+    let puzzelInfoData = null;
+
+    window.pzlOnBeforeBootstrap = function() {
+      if (puzzelInfoData) {
+        return {
+          visitorClaims: {
+            full_context: puzzelInfoData,
+            user_email: puzzelInfoData["auth.userName"] || puzzelInfoData["agent.userName"],
+            access_token: puzzelInfoData["auth.getPuzzelIDAccessToken"],
+            puzzel_info: puzzelInfoData
+          }
+        };
+      }
+      return {};
+    };
 
     async function main() {
       try {
@@ -63,6 +78,8 @@
           puzzel_info[puzzelApis[index]] = result;
         });
 
+        puzzelInfoData = puzzel_info;
+
         statusEl.textContent = "Loading Puzzel chat widget...";
 
         const loader = document.createElement("script");
@@ -77,12 +94,6 @@
             if (window.pzl && window.pzl.api) {
               clearInterval(checkPzlReady);
               puzzelInitialized = true;
-
-              window.pzl.api.setClaims({
-                full_context: puzzel_info,
-                user_email: puzzel_info["auth.userName"] || puzzel_info["agent.userName"],
-                puzzel_info: puzzel_info
-              });
 
               statusEl.textContent = "";
 
