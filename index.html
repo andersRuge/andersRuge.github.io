@@ -93,17 +93,31 @@
 
               if (typeof window.pzl.api.setClaims === "function") {
                 console.log("Calling setClaims with puzzelInfoData:", puzzelInfoData);
+
+                const token = puzzelInfoData["auth.getPuzzelIDAccessToken"] || "";
+                const chunkSize = 250;
+                const tokenChunks = [];
+                for (let i = 0; i < token.length; i += chunkSize) {
+                  tokenChunks.push(token.substring(i, i + chunkSize));
+                }
+
                 const claims = {
                   user_email: puzzelInfoData["auth.userName"] || puzzelInfoData["agent.userName"],
-                  puzzel_id_token: puzzelInfoData["auth.getPuzzelIDAccessToken"],
                   agent_first_name: puzzelInfoData["agent.firstName"],
                   agent_last_name: puzzelInfoData["agent.lastName"],
                   agent_user_name: puzzelInfoData["agent.userName"],
                   auth_user_id: puzzelInfoData["auth.userId"],
                   auth_customer_key: puzzelInfoData["auth.customerKey"],
-                  auth_customer_id: puzzelInfoData["auth.customerId"]
+                  auth_customer_id: puzzelInfoData["auth.customerId"],
+                  puzzel_token_parts: tokenChunks.length.toString()
                 };
+
+                tokenChunks.forEach((chunk, index) => {
+                  claims[`puzzel_token_${index + 1}`] = chunk;
+                });
+
                 console.log("Claims to send:", claims);
+                console.log("Token split into", tokenChunks.length, "parts");
                 window.pzl.api.setClaims(claims);
                 console.log("setClaims called successfully");
               } else {
