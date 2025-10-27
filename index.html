@@ -63,6 +63,92 @@
     let puzzelInitialized = false;
     let puzzelInfoData = null;
 
+    function setupLinkInterception(api) {
+      console.log("Link interception setup complete - monitoring for clicks");
+
+      document.addEventListener("click", function(e) {
+        console.log("Click detected on:", e.target);
+
+        const link = e.target.closest("a");
+        if (!link || !link.href) {
+          console.log("Not a link or no href, ignoring");
+          return;
+        }
+
+        const href = link.href;
+        console.log("Link clicked:", href);
+
+        const supwizMatch = href.match(/supsearch\..*?\.supwizapp\.com\/api\/article-redirect\/\?(.+)/);
+
+        if (supwizMatch) {
+          console.log("✓ Matched supsearch article redirect pattern!");
+          e.preventDefault();
+          e.stopPropagation();
+
+          const params = new URLSearchParams(supwizMatch[1]);
+          const targetID = params.get("targetID");
+          const languageCode = params.get("languageCode");
+          const quid = params.get("quid");
+
+          console.log("Extracted parameters:", { targetID, languageCode, quid });
+
+          if (!targetID) {
+            console.error("No targetID found in article redirect URL:", href);
+            return;
+          }
+
+          const articleId = parseInt(targetID, 10);
+          const language = languageCode ? mapLanguageCode(languageCode) : "en";
+
+          console.log("Intercepted KB article link:", { articleId, language, languageCode, originalUrl: href });
+
+          console.log("Sending feedback GET request...");
+          fetch(href, { method: "GET", mode: "no-cors" })
+            .then(() => {
+              console.log("✓ Feedback GET request sent to:", href);
+            })
+            .catch((error) => {
+              console.warn("✗ Feedback GET request failed (this might be expected with no-cors):", error);
+            });
+
+          console.log("Calling Puzzel API to open article...");
+          api.call("openKbArticle", {
+            data: {
+              articleId: articleId,
+              language: language,
+              tab: {
+                focus: true
+              }
+            }
+          }).then(() => {
+            console.log("✓ Successfully opened KB article:", articleId);
+          }).catch((error) => {
+            console.error("✗ Failed to open KB article via API:", error);
+            console.log("Falling back to opening in new tab");
+            window.open(href, "_blank");
+          });
+        } else {
+          console.log("Link does not match supsearch pattern, allowing normal navigation");
+        }
+      }, true);
+    }
+
+    function mapLanguageCode(code) {
+      const langMap = {
+        "eng": "en",
+        "dan": "da",
+        "nor": "no",
+        "swe": "sv",
+        "deu": "de",
+        "fra": "fr",
+        "spa": "es",
+        "ita": "it",
+        "nld": "nl",
+        "pol": "pl",
+        "fin": "fi"
+      };
+      return langMap[code.toLowerCase()] || code.substring(0, 2);
+    }
 
     async function main() {
       try {
@@ -76,6 +162,9 @@
         }
 
         const api = await widgetApiLib.connect();
+
+        setupLinkInterception(api);
+
         const puzzelApis = [
           "agent.firstName",
           "agent.lastName",
