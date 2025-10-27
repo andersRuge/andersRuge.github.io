@@ -112,7 +112,9 @@
             });
 
           console.log("Calling Puzzel API to open article...");
-          api.call("openKbArticle", {
+          console.log("Available API methods:", api);
+
+          api.call("tab.open", {
             data: {
               articleId: articleId,
               language: language,
@@ -123,9 +125,20 @@
           }).then(() => {
             console.log("✓ Successfully opened KB article:", articleId);
           }).catch((error) => {
-            console.error("✗ Failed to open KB article via API:", error);
-            console.log("Falling back to opening in new tab");
-            window.open(href, "_blank");
+            console.error("✗ Failed to open KB article via API (method: tab.open):", error);
+            console.log("Trying alternative method: knowledgebase.openArticle");
+
+            return api.call("knowledgebase.openArticle", {
+              articleId: articleId,
+              language: language
+            });
+          }).then((result) => {
+            if (result !== undefined) {
+              console.log("✓ Successfully opened KB article with alternative method:", articleId);
+            }
+          }).catch((error2) => {
+            console.error("✗ All API methods failed:", error2);
+            console.log("Article will not open. Check console for available API methods.");
           });
         } else {
           console.log("Link does not match supsearch pattern, allowing normal navigation");
