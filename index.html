@@ -111,38 +111,43 @@
               console.warn("✗ Feedback GET request failed (this might be expected with no-cors):", error);
             });
 
-          console.log("Opening KB article via Puzzel postMessage...");
+          console.log("Opening KB article via Puzzel API...");
 
-          const data = {
-            articleId: articleId,
-            language: language,
-            tab: {
-              focus: true
-            }
-          };
+          async function openKbArticle() {
+            try {
+              // Get current tab UID if available
+              let relatedTabUid = '';
+              try {
+                const tabUidResult = await api.get('tab.uid');
+                relatedTabUid = typeof tabUidResult === 'string' ? tabUidResult : String(tabUidResult || '');
+                console.log("Got tab UID:", relatedTabUid);
+              } catch (tabError) {
+                console.log("Could not get tab.uid (this is optional):", tabError);
+              }
 
-          console.log("Sending SYSTEM_KB_ARTICLE_SHOW with data:", data);
+              const data = {
+                articleId: articleId,
+                language: language,
+                tab: {
+                  focus: true,
+                  ...(relatedTabUid && { relatedTabUid })
+                }
+              };
 
-          try {
-            if (api._port && typeof api._port.postMessage === "function") {
-              api._port.postMessage({
-                call: "SYSTEM_KB_ARTICLE_SHOW",
-                args: [{ data }]
-              });
-              console.log("✓ Successfully sent SYSTEM_KB_ARTICLE_SHOW command");
+              console.log("Calling events.publish with SYSTEM_KB_ARTICLE_SHOW, data:", data);
+
+              await api.call('events.publish', 'SYSTEM_KB_ARTICLE_SHOW', { data });
+
+              console.log("✓ Successfully opened KB article:", articleId);
               console.log(`Article ID: ${articleId}, Language: ${language}`);
-            } else if (window.parent && window.parent !== window) {
-              window.parent.postMessage({
-                call: "SYSTEM_KB_ARTICLE_SHOW",
-                args: [{ data }]
-              }, api._origin || "*");
-              console.log("✓ Successfully sent SYSTEM_KB_ARTICLE_SHOW to parent window");
-            } else {
-              console.error("✗ No suitable postMessage target found");
+            } catch (error) {
+              console.error("✗ Failed to open KB article:", error);
+              console.log("Falling back to opening in new tab");
+              window.open(href, '_blank', 'noopener,noreferrer');
             }
-          } catch (error) {
-            console.error("✗ Failed to send SYSTEM_KB_ARTICLE_SHOW:", error);
           }
+
+          openKbArticle();
         } else {
           console.log("Link does not match supsearch pattern, allowing normal navigation");
         }
