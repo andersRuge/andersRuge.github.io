@@ -111,35 +111,38 @@
               console.warn("✗ Feedback GET request failed (this might be expected with no-cors):", error);
             });
 
-          console.log("Calling Puzzel API to open article...");
-          console.log("Available API methods:", api);
+          console.log("Opening KB article via Puzzel postMessage...");
 
-          api.call("tab.open", {
-            data: {
-              articleId: articleId,
-              language: language,
-              tab: {
-                focus: true
-              }
+          const data = {
+            articleId: articleId,
+            language: language,
+            tab: {
+              focus: true
             }
-          }).then(() => {
-            console.log("✓ Successfully opened KB article:", articleId);
-          }).catch((error) => {
-            console.error("✗ Failed to open KB article via API (method: tab.open):", error);
-            console.log("Trying alternative method: knowledgebase.openArticle");
+          };
 
-            return api.call("knowledgebase.openArticle", {
-              articleId: articleId,
-              language: language
-            });
-          }).then((result) => {
-            if (result !== undefined) {
-              console.log("✓ Successfully opened KB article with alternative method:", articleId);
+          console.log("Sending SYSTEM_KB_ARTICLE_SHOW with data:", data);
+
+          try {
+            if (api._port && typeof api._port.postMessage === "function") {
+              api._port.postMessage({
+                call: "SYSTEM_KB_ARTICLE_SHOW",
+                args: [{ data }]
+              });
+              console.log("✓ Successfully sent SYSTEM_KB_ARTICLE_SHOW command");
+              console.log(`Article ID: ${articleId}, Language: ${language}`);
+            } else if (window.parent && window.parent !== window) {
+              window.parent.postMessage({
+                call: "SYSTEM_KB_ARTICLE_SHOW",
+                args: [{ data }]
+              }, api._origin || "*");
+              console.log("✓ Successfully sent SYSTEM_KB_ARTICLE_SHOW to parent window");
+            } else {
+              console.error("✗ No suitable postMessage target found");
             }
-          }).catch((error2) => {
-            console.error("✗ All API methods failed:", error2);
-            console.log("Article will not open. Check console for available API methods.");
-          });
+          } catch (error) {
+            console.error("✗ Failed to send SYSTEM_KB_ARTICLE_SHOW:", error);
+          }
         } else {
           console.log("Link does not match supsearch pattern, allowing normal navigation");
         }
