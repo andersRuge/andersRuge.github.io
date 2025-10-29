@@ -64,66 +64,40 @@
     let puzzelInfoData = null;
 
     function setupLinkInterception(api) {
-      console.log("Link interception setup complete - monitoring for clicks");
-
       document.addEventListener("click", function(e) {
-        console.log("Click detected on:", e.target);
-
         const link = e.target.closest("a");
         if (!link || !link.href) {
-          console.log("Not a link or no href, ignoring");
           return;
         }
 
         const href = link.href;
-        console.log("Link clicked:", href);
-
         const supwizMatch = href.match(/supsearch\..*?\.supwizapp\.com\/api\/article-redirect\/\?(.+)/);
 
         if (supwizMatch) {
-          console.log("✓ Matched supsearch article redirect pattern!");
           e.preventDefault();
           e.stopPropagation();
 
           const params = new URLSearchParams(supwizMatch[1]);
           const targetID = params.get("targetID");
           const languageCode = params.get("languageCode");
-          const quid = params.get("quid");
-
-          console.log("Extracted parameters:", { targetID, languageCode, quid });
 
           if (!targetID) {
-            console.error("No targetID found in article redirect URL:", href);
+            console.error("No targetID found in article redirect URL");
             return;
           }
 
           const articleId = parseInt(targetID, 10);
           const language = languageCode ? mapLanguageCode(languageCode) : "en";
 
-          console.log("Intercepted KB article link:", { articleId, language, languageCode, originalUrl: href });
-
-          console.log("Sending feedback GET request...");
-          fetch(href, { method: "GET", mode: "no-cors" })
-            .then(() => {
-              console.log("✓ Feedback GET request sent to:", href);
-            })
-            .catch((error) => {
-              console.warn("✗ Feedback GET request failed (this might be expected with no-cors):", error);
-            });
-
-          console.log("Opening KB article via Puzzel API...");
+          fetch(href, { method: "GET", mode: "no-cors" }).catch(() => {});
 
           async function openKbArticle() {
             try {
-              // Get current tab UID if available
               let relatedTabUid = '';
               try {
                 const tabUidResult = await api.get('tab.uid');
                 relatedTabUid = typeof tabUidResult === 'string' ? tabUidResult : String(tabUidResult || '');
-                console.log("Got tab UID:", relatedTabUid);
-              } catch (tabError) {
-                console.log("Could not get tab.uid (this is optional):", tabError);
-              }
+              } catch (tabError) {}
 
               const data = {
                 articleId: articleId,
@@ -134,22 +108,14 @@
                 }
               };
 
-              console.log("Calling events.publish with SYSTEM_KB_ARTICLE_SHOW, data:", data);
-
               await api.call('events.publish', 'SYSTEM_KB_ARTICLE_SHOW', { data });
-
-              console.log("✓ Successfully opened KB article:", articleId);
-              console.log(`Article ID: ${articleId}, Language: ${language}`);
             } catch (error) {
-              console.error("✗ Failed to open KB article:", error);
-              console.log("Falling back to opening in new tab");
+              console.error("Failed to open KB article:", error);
               window.open(href, '_blank', 'noopener,noreferrer');
             }
           }
 
           openKbArticle();
-        } else {
-          console.log("Link does not match supsearch pattern, allowing normal navigation");
         }
       }, true);
     }
@@ -198,10 +164,7 @@
 	  "auth.getPuzzelIDAccessToken"
         ];
 
-        const results = await Promise.all(puzzelApis.map((k) => api.call(k).catch((error) => {
-          console.log(`Failed to fetch ${k}:`, error);
-          return undefined;
-        })));
+        const results = await Promise.all(puzzelApis.map((k) => api.call(k).catch(() => undefined)));
         const puzzel_info = {};
         results.forEach((result, index) => {
           if (result !== undefined) {
@@ -209,7 +172,6 @@
           }
         });
 
-        console.log("Fetched Puzzel info:", puzzel_info);
         puzzelInfoData = puzzel_info;
 
         loadingOverlay.classList.add("active");
@@ -228,12 +190,7 @@
               clearInterval(checkPzlReady);
               puzzelInitialized = true;
 
-              console.log("Puzzel API ready, checking for setClaims...");
-              console.log("pzl.api methods:", Object.keys(window.pzl.api));
-
               if (typeof window.pzl.api.setClaims === "function") {
-                console.log("Calling setClaims with puzzelInfoData:", puzzelInfoData);
-
                 const token = puzzelInfoData["auth.getPuzzelIDAccessToken"] || "";
                 const chunkSize = 250;
                 const tokenChunks = [];
@@ -251,12 +208,7 @@
                   claims[`puzzel_token_${index + 1}`] = chunk;
                 });
 
-                console.log("Claims to send:", claims);
-                console.log("Token split into", tokenChunks.length, "parts");
                 window.pzl.api.setClaims(claims);
-                console.log("setClaims called successfully");
-              } else {
-                console.warn("setClaims is not available on pzl.api");
               }
 
               statusEl.textContent = "Ready!";
