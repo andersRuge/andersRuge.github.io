@@ -56,7 +56,7 @@
   <script type="text/javascript" src="puzzel-api.min.js"></script>
   <script>
   (function () {
-    const CUSTOMER_ID = "99201";
+    let CUSTOMER_ID = null;
     const CONTAINER_ID = "pzl-widget-container";
     const statusEl = document.getElementById("status");
     const loadingOverlay = document.getElementById("loading-overlay");
@@ -173,6 +173,12 @@
         });
 
         puzzelInfoData = puzzel_info;
+        const customerIdValue = puzzel_info["auth.customerId"];
+        CUSTOMER_ID = customerIdValue != null ? String(customerIdValue) : null;
+
+        if (!CUSTOMER_ID) {
+          throw new Error("auth.customerId not available");
+        }
 
         loadingOverlay.classList.add("active");
         statusEl.textContent = "Loading Puzzel chat widget...";
