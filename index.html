@@ -181,40 +181,6 @@
 
         puzzelInfoData = puzzel_info;
 
-        console.log("=== Agent Interface Properties ===");
-        console.log("firstName:", puzzel_info["agent.firstName"]);
-        console.log("lastName:", puzzel_info["agent.lastName"]);
-        console.log("userName:", puzzel_info["agent.userName"]);
-        console.log("displayName:", puzzel_info["agent.displayName"]);
-        console.log("contactCentreStatus:", puzzel_info["agent.contactCentreStatus"]);
-        console.log("userStatus:", puzzel_info["agent.userStatus"]);
-        console.log("allowLiveShare:", puzzel_info["agent.allowLiveShare"]);
-        console.log("currentProfile:", puzzel_info["agent.currentProfile"]);
-        console.log("canCall:", puzzel_info["agent.canCall"]);
-        console.log("outlineActiveElement:", puzzel_info["agent.outlineActiveElement"]);
-        console.log("darkMode:", puzzel_info["agent.darkMode"]);
-
-        console.log("=== Agent Interface Methods ===");
-        try {
-          const unpauseResult = await api.call("agent.unpause").catch(() => undefined);
-          console.log("unpause() - available:", typeof unpauseResult !== "undefined");
-        } catch (e) {
-          console.log("unpause() - error:", e.message);
-        }
-        try {
-          const setAvailableResult = await api.call("agent.setAvailable").catch(() => undefined);
-          console.log("setAvailable() - available:", typeof setAvailableResult !== "undefined");
-        } catch (e) {
-          console.log("setAvailable() - error:", e.message);
-        }
-        try {
-          const extendWrapUptimeResult = await api.call("agent.extendWrapUptime").catch(() => undefined);
-          console.log("extendWrapUptime() - available:", typeof extendWrapUptimeResult !== "undefined");
-        } catch (e) {
-          console.log("extendWrapUptime() - error:", e.message);
-        }
-        console.log("=== Full Agent Interface Data ===");
-        console.log(JSON.stringify(puzzel_info, null, 2));
         const customerIdValue = puzzel_info["auth.customerKey"];
         CUSTOMER_ID = customerIdValue != null ? String(customerIdValue) : null;
 
