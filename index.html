@@ -71,25 +71,31 @@
         }
 
         const href = link.href;
-        const supwizMatch = href.match(/supsearch\..*?\.supwizapp\.com\/api\/article-redirect\/\?(.+)/);
+        
+        // Parse the URL to check for Puzzel KB article parameters
+        let url;
+        try {
+          url = new URL(href);
+        } catch (err) {
+          return; // Invalid URL, let it be handled normally
+        }
 
-        if (supwizMatch) {
+        const pzlRoute = url.searchParams.get("pzlRoute");
+        const pzlArticleId = url.searchParams.get("pzlArticleId");
+
+        // Only intercept links with pzlRoute=articleDetail and a pzlArticleId
+        if (pzlRoute === "articleDetail" && pzlArticleId) {
           e.preventDefault();
           e.stopPropagation();
 
-          const params = new URLSearchParams(supwizMatch[1]);
-          const targetID = params.get("targetID");
-          const languageCode = params.get("languageCode");
-
-          if (!targetID) {
-            console.error("No targetID found in article redirect URL");
+          const articleId = parseInt(pzlArticleId, 10);
+          if (isNaN(articleId)) {
+            console.error("Invalid pzlArticleId:", pzlArticleId);
             return;
           }
 
-          const articleId = parseInt(targetID, 10);
-          const language = languageCode ? mapLanguageCode(languageCode) : "en";
-
-          fetch(href, { method: "GET", mode: "no-cors" }).catch(() => {});
+          // Try to get language from URL params, default to "en"
+          const language = url.searchParams.get("language") || "en";
 
           async function openKbArticle() {
             try {
@@ -117,24 +123,8 @@
 
           openKbArticle();
         }
+        // All other links (including supsearch article-redirect URLs) open normally
       }, true);
-    }
-
-    function mapLanguageCode(code) {
-      const langMap = {
-        "eng": "en",
-        "dan": "da",
-        "nor": "no",
-        "swe": "sv",
-        "deu": "de",
-        "fra": "fr",
-        "spa": "es",
-        "ita": "it",
-        "nld": "nl",
-        "pol": "pl",
-        "fin": "fi"
-      };
-      return langMap[code.toLowerCase()] || code.substring(0, 2);
     }
 
     async function main() {
@@ -199,10 +189,33 @@
         loader.setAttribute("data-customer-id", customerIdForLoader);
         loader.setAttribute("data-container", CONTAINER_ID);
 
+        let widgetLoadError = null;
+        let originalConsoleError = console.error;
+        console.error = function(...args) {
+          const errorMsg = args.join(' ');
+          if (errorMsg.includes('pzl_loader abort bootstrap') ||
+              errorMsg.includes('mapped configuration has no published version') ||
+              errorMsg.includes('configVersion')) {
+            widgetLoadError = errorMsg;
+            statusEl.textContent = "Configuration Error";
+            const subtext = document.querySelector(".status-subtext");
+            if (subtext) {
+              subtext.textContent = "Knowledgebase widget configuration missing published version. Please check Puzzel Agent settings.";
+            }
+          }
+          originalConsoleError.apply(console, args);
+        };
+
         loader.onload = function () {
           const checkPzlReady = setInterval(() => {
             if (window.pzl && window.pzl.api) {
               clearInterval(checkPzlReady);
+              console.error = originalConsoleError;
+
+              if (widgetLoadError) {
+                console.warn("Widget loaded but configuration error detected:", widgetLoadError);
+              }
+
               puzzelInitialized = true;
 
               if (typeof window.pzl.api.setClaims === "function") {
@@ -226,13 +239,15 @@
                 window.pzl.api.setClaims(claims);
               }
 
-              statusEl.textContent = "Ready!";
-              setTimeout(() => {
-                loadingOverlay.classList.add("fade-out");
+              if (!widgetLoadError) {
+                statusEl.textContent = "Ready!";
                 setTimeout(() => {
-                  loadingOverlay.style.display = "none";
-                }, 500);
-              }, 300);
+                  loadingOverlay.classList.add("fade-out");
+                  setTimeout(() => {
+                    loadingOverlay.style.display = "none";
+                  }, 500);
+                }, 300);
+              }
 
               window.addEventListener("resize", () => {
                 if (window.pzl && window.pzl.api && typeof window.pzl.api.resize === "function") {
@@ -245,7 +260,10 @@
           setTimeout(() => {
             if (!puzzelInitialized) {
               clearInterval(checkPzlReady);
-              statusEl.textContent = "Initialization taking longer than expected...";
+              console.error = originalConsoleError;
+              if (!widgetLoadError) {
+                statusEl.textContent = "Initialization taking longer than expected...";
+              }
             }
           }, 10000);
         };
