@@ -173,35 +173,38 @@
 
           async function openKbArticle() {
             try {
+              // Get the current tab UID for context
               let relatedTabUid = '';
               try {
                 const tabUidResult = await api.get('tab.uid');
                 relatedTabUid = typeof tabUidResult === 'string' ? tabUidResult : String(tabUidResult || '');
-              } catch (tabError) {}
+              } catch (tabError) {
+                // Ignore tab UID errors
+              }
 
+              console.log("Opening KB article:", articleId, "language:", language, "tabUid:", relatedTabUid);
+
+              // First, trigger a reset by navigating to top articles (same as refresh button)
+              try {
+                await api.call('events.publish', 'SYSTEM_KB_TOP_ARTICLES_SHOW', { data: {} });
+              } catch (resetError) {
+                console.log("Reset to top articles failed (may be expected):", resetError);
+              }
+
+              // Small delay to allow the reset to take effect
+              await new Promise(resolve => setTimeout(resolve, 100));
+
+              // Now show the article - matching the sample code structure exactly
               const data = {
                 articleId: articleId,
                 language: language,
                 tab: {
                   focus: true,
-                  ...(relatedTabUid && { relatedTabUid })
+                  relatedTabUid: relatedTabUid
                 }
               };
 
-              console.log("Opening KB article:", articleId, "language:", language);
-
-              // Use tab.new to force a fresh context
-              const dataWithNewTab = {
-                articleId: articleId,
-                language: language,
-                tab: {
-                  focus: true,
-                  new: true,
-                  ...(relatedTabUid && { relatedTabUid })
-                }
-              };
-
-              await api.call('events.publish', 'SYSTEM_KB_ARTICLE_SHOW', { data: dataWithNewTab });
+              await api.call('events.publish', 'SYSTEM_KB_ARTICLE_SHOW', { data });
             } catch (error) {
               console.error("Failed to open KB article:", error);
               window.open(href, '_blank', 'noopener,noreferrer');
