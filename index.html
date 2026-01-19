@@ -99,9 +99,13 @@
 
           window.pzl.api.setClaims(claims);
           console.log("Puzzel token refreshed successfully at", new Date().toISOString());
+          console.log("Token (first 50 chars):", token.substring(0, 50) + "...");
+          return token;
         }
+        return token;
       } catch (error) {
         console.error("Failed to refresh Puzzel token:", error);
+        return null;
       }
     }
 
