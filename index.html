@@ -286,6 +286,9 @@
               setInterval(refreshPuzzelToken, TOKEN_REFRESH_INTERVAL_MS);
               console.log("Token refresh scheduled every 30 minutes");
 
+              // Expose refresh function globally for manual testing
+              window.refreshPuzzelToken = refreshPuzzelToken;
+
               if (!widgetLoadError) {
                 statusEl.textContent = "Ready!";
                 setTimeout(() => {
