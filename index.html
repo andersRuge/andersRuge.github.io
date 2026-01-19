@@ -184,16 +184,40 @@
 
               console.log("Opening KB article:", articleId, "language:", language, "tabUid:", relatedTabUid);
 
-              // First reset by navigating to top articles (this clears the article state)
+              // Try to find and click the KB refresh button directly
+              let refreshClicked = false;
               try {
-                await api.call('events.publish', 'SYSTEM_KB_TOP_ARTICLES_SHOW', { data: {} });
-                console.log("Reset to top articles completed");
-              } catch (resetError) {
-                console.log("Reset to top articles failed:", resetError);
+                // Try accessing parent window's frames to find KB widget
+                const frames = window.parent.document.querySelectorAll('iframe');
+                for (const frame of frames) {
+                  try {
+                    const refreshBtn = frame.contentDocument?.querySelector('a.reset[title="Refresh Menu"]');
+                    if (refreshBtn) {
+                      refreshBtn.click();
+                      console.log("Clicked KB refresh button in iframe");
+                      refreshClicked = true;
+                      break;
+                    }
+                  } catch (e) {
+                    // Cross-origin frame, can't access
+                  }
+                }
+              } catch (parentError) {
+                console.log("Could not access parent frames:", parentError);
               }
 
-              // Wait for the reset to fully complete (Aurelia needs time to process)
-              await new Promise(resolve => setTimeout(resolve, 350));
+              // Fallback: use SYSTEM_KB_TOP_ARTICLES_SHOW event
+              if (!refreshClicked) {
+                try {
+                  await api.call('events.publish', 'SYSTEM_KB_TOP_ARTICLES_SHOW', { data: {} });
+                  console.log("Reset via SYSTEM_KB_TOP_ARTICLES_SHOW");
+                } catch (resetError) {
+                  console.log("Reset failed:", resetError);
+                }
+              }
+
+              // Wait for the reset to fully complete
+              await new Promise(resolve => setTimeout(resolve, 500));
 
               // Now show the article
               const data = {
