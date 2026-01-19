@@ -173,64 +173,16 @@
 
           async function openKbArticle() {
             try {
-              // Get the current tab UID for context
-              let relatedTabUid = '';
-              try {
-                const tabUidResult = await api.get('tab.uid');
-                relatedTabUid = typeof tabUidResult === 'string' ? tabUidResult : String(tabUidResult || '');
-              } catch (tabError) {
-                // Ignore tab UID errors
-              }
+              const tabUidResult = await api.get('tab.uid');
+              const relatedTabUid = typeof tabUidResult === 'string' ? tabUidResult : String(tabUidResult || '');
 
-              console.log("Opening KB article:", articleId, "language:", language, "tabUid:", relatedTabUid);
-
-              // Try to find and click the KB refresh button directly
-              let refreshClicked = false;
-              try {
-                // Try accessing parent window's frames to find KB widget
-                const frames = window.parent.document.querySelectorAll('iframe');
-                for (const frame of frames) {
-                  try {
-                    const refreshBtn = frame.contentDocument?.querySelector('a.reset[title="Refresh Menu"]');
-                    if (refreshBtn) {
-                      refreshBtn.click();
-                      console.log("Clicked KB refresh button in iframe");
-                      refreshClicked = true;
-                      break;
-                    }
-                  } catch (e) {
-                    // Cross-origin frame, can't access
-                  }
+              await api.call('events.publish', 'SYSTEM_KB_ARTICLE_SHOW', {
+                data: {
+                  articleId: articleId,
+                  language: language,
+                  tab: { focus: true, relatedTabUid }
                 }
-              } catch (parentError) {
-                console.log("Could not access parent frames:", parentError);
-              }
-
-              // Fallback: use SYSTEM_KB_TOP_ARTICLES_SHOW event
-              if (!refreshClicked) {
-                try {
-                  await api.call('events.publish', 'SYSTEM_KB_TOP_ARTICLES_SHOW', { data: {} });
-                  console.log("Reset via SYSTEM_KB_TOP_ARTICLES_SHOW");
-                } catch (resetError) {
-                  console.log("Reset failed:", resetError);
-                }
-              }
-
-              // Wait for the reset to fully complete
-              await new Promise(resolve => setTimeout(resolve, 500));
-
-              // Now show the article
-              const data = {
-                articleId: articleId,
-                language: language,
-                tab: {
-                  focus: true,
-                  relatedTabUid: relatedTabUid
-                }
-              };
-
-              await api.call('events.publish', 'SYSTEM_KB_ARTICLE_SHOW', { data });
-              console.log("SYSTEM_KB_ARTICLE_SHOW published for article:", articleId);
+              });
             } catch (error) {
               console.error("Failed to open KB article:", error);
               window.open(href, '_blank', 'noopener,noreferrer');
