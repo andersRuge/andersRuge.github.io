@@ -62,6 +62,48 @@
     const loadingOverlay = document.getElementById("loading-overlay");
     let puzzelInitialized = false;
     let puzzelInfoData = null;
+    let puzzelApi = null;
+    const TOKEN_REFRESH_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+
+    async function refreshPuzzelToken() {
+      if (!puzzelApi || !puzzelInitialized) {
+        console.warn("Cannot refresh token: Puzzel not initialized");
+        return;
+      }
+
+      try {
+        const token = await puzzelApi.call("auth.getPuzzelIDAccessToken");
+        if (!token) {
+          console.warn("Token refresh returned empty token");
+          return;
+        }
+
+        puzzelInfoData["auth.getPuzzelIDAccessToken"] = token;
+
+        if (window.pzl && window.pzl.api && typeof window.pzl.api.setClaims === "function") {
+          const chunkSize = 250;
+          const tokenChunks = [];
+          for (let i = 0; i < token.length; i += chunkSize) {
+            tokenChunks.push(token.substring(i, i + chunkSize));
+          }
+
+          const claims = {
+            agent_first_name: puzzelInfoData["agent.firstName"],
+            agent_last_name: puzzelInfoData["agent.lastName"],
+            puzzel_token_parts: tokenChunks.length.toString()
+          };
+
+          tokenChunks.forEach((chunk, index) => {
+            claims[`puzzel_token_${index + 1}`] = chunk;
+          });
+
+          window.pzl.api.setClaims(claims);
+          console.log("Puzzel token refreshed successfully at", new Date().toISOString());
+        }
+      } catch (error) {
+        console.error("Failed to refresh Puzzel token:", error);
+      }
+    }
 
     function setupLinkInterception(api) {
       document.addEventListener("click", function(e) {
@@ -71,7 +113,7 @@
         }
 
         const href = link.href;
-        
+
         // Parse the URL to check for Puzzel KB article parameters
         let url;
         try {
@@ -139,6 +181,7 @@
         }
 
         const api = await widgetApiLib.connect();
+        puzzelApi = api;
 
         setupLinkInterception(api);
 
@@ -238,6 +281,10 @@
 
                 window.pzl.api.setClaims(claims);
               }
+
+              // Start token refresh interval
+              setInterval(refreshPuzzelToken, TOKEN_REFRESH_INTERVAL_MS);
+              console.log("Token refresh scheduled every 30 minutes");
 
               if (!widgetLoadError) {
                 statusEl.textContent = "Ready!";
