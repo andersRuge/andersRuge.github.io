@@ -190,20 +190,18 @@
 
               console.log("Opening KB article:", articleId, "language:", language);
 
-              // First trigger top articles view to reset the rendering
-              try {
-                await api.call('events.publish', 'SYSTEM_KB_TOP_ARTICLES_SHOW', {
-                  data: {
-                    tab: { focus: false }
-                  }
-                });
-                // Delay to let the navigation complete
-                await new Promise(resolve => setTimeout(resolve, 150));
-              } catch (resetError) {
-                console.log("Reset navigation skipped:", resetError.message);
-              }
+              // Use tab.new to force a fresh context
+              const dataWithNewTab = {
+                articleId: articleId,
+                language: language,
+                tab: {
+                  focus: true,
+                  new: true,
+                  ...(relatedTabUid && { relatedTabUid })
+                }
+              };
 
-              await api.call('events.publish', 'SYSTEM_KB_ARTICLE_SHOW', { data });
+              await api.call('events.publish', 'SYSTEM_KB_ARTICLE_SHOW', { data: dataWithNewTab });
             } catch (error) {
               console.error("Failed to open KB article:", error);
               window.open(href, '_blank', 'noopener,noreferrer');
