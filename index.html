@@ -184,17 +184,26 @@
 
               console.log("Opening KB article:", articleId, "language:", language, "tabUid:", relatedTabUid);
 
-              // First, trigger a reset by navigating to top articles (same as refresh button)
+              // Try the internal COPILOT_OPEN_ARTICLE event first (used by the widget internally)
+              // This calls articleClicked() directly
               try {
-                await api.call('events.publish', 'SYSTEM_KB_TOP_ARTICLES_SHOW', { data: {} });
-              } catch (resetError) {
-                console.log("Reset to top articles failed (may be expected):", resetError);
+                await api.call('events.publish', 'COPILOT_OPEN_ARTICLE', { 
+                  data: { articleId: articleId, language: language }
+                });
+                console.log("Published COPILOT_OPEN_ARTICLE event");
+                return;
+              } catch (copilotError) {
+                console.log("COPILOT_OPEN_ARTICLE failed, trying SYSTEM_KB_ARTICLE_SHOW:", copilotError);
               }
 
-              // Small delay to allow the reset to take effect
-              await new Promise(resolve => setTimeout(resolve, 100));
+              // Fallback to SYSTEM_KB_ARTICLE_SHOW with reset
+              try {
+                await api.call('events.publish', 'SYSTEM_KB_TOP_ARTICLES_SHOW', { data: {} });
+                await new Promise(resolve => setTimeout(resolve, 300));
+              } catch (resetError) {
+                // Ignore reset errors
+              }
 
-              // Now show the article - matching the sample code structure exactly
               const data = {
                 articleId: articleId,
                 language: language,
