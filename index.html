@@ -184,26 +184,18 @@
 
               console.log("Opening KB article:", articleId, "language:", language, "tabUid:", relatedTabUid);
 
-              // Try the internal COPILOT_OPEN_ARTICLE event first (used by the widget internally)
-              // This calls articleClicked() directly
-              try {
-                await api.call('events.publish', 'COPILOT_OPEN_ARTICLE', { 
-                  data: { articleId: articleId, language: language }
-                });
-                console.log("Published COPILOT_OPEN_ARTICLE event");
-                return;
-              } catch (copilotError) {
-                console.log("COPILOT_OPEN_ARTICLE failed, trying SYSTEM_KB_ARTICLE_SHOW:", copilotError);
-              }
-
-              // Fallback to SYSTEM_KB_ARTICLE_SHOW with reset
+              // First reset by navigating to top articles (this clears the article state)
               try {
                 await api.call('events.publish', 'SYSTEM_KB_TOP_ARTICLES_SHOW', { data: {} });
-                await new Promise(resolve => setTimeout(resolve, 300));
+                console.log("Reset to top articles completed");
               } catch (resetError) {
-                // Ignore reset errors
+                console.log("Reset to top articles failed:", resetError);
               }
 
+              // Wait for the reset to fully complete (Aurelia needs time to process)
+              await new Promise(resolve => setTimeout(resolve, 350));
+
+              // Now show the article
               const data = {
                 articleId: articleId,
                 language: language,
@@ -214,6 +206,7 @@
               };
 
               await api.call('events.publish', 'SYSTEM_KB_ARTICLE_SHOW', { data });
+              console.log("SYSTEM_KB_ARTICLE_SHOW published for article:", articleId);
             } catch (error) {
               console.error("Failed to open KB article:", error);
               window.open(href, '_blank', 'noopener,noreferrer');
