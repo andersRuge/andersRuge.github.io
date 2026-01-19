@@ -190,15 +190,17 @@
 
               console.log("Opening KB article:", articleId, "language:", language);
 
-              // First navigate to home to force a refresh, then show the article
+              // First trigger top articles view to reset the rendering
               try {
-                await api.call('events.publish', 'SYSTEM_KB_HOME_SHOW', {
-                  data: { tab: { focus: false } }
+                await api.call('events.publish', 'SYSTEM_KB_TOP_ARTICLES_SHOW', {
+                  data: {
+                    tab: { focus: false }
+                  }
                 });
-                // Small delay to let the navigation complete
-                await new Promise(resolve => setTimeout(resolve, 50));
-              } catch (homeError) {
-                // Ignore if home navigation fails, continue with article
+                // Delay to let the navigation complete
+                await new Promise(resolve => setTimeout(resolve, 150));
+              } catch (resetError) {
+                console.log("Reset navigation skipped:", resetError.message);
               }
 
               await api.call('events.publish', 'SYSTEM_KB_ARTICLE_SHOW', { data });
