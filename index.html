@@ -188,6 +188,19 @@
                 }
               };
 
+              console.log("Opening KB article:", articleId, "language:", language);
+
+              // First navigate to home to force a refresh, then show the article
+              try {
+                await api.call('events.publish', 'SYSTEM_KB_HOME_SHOW', {
+                  data: { tab: { focus: false } }
+                });
+                // Small delay to let the navigation complete
+                await new Promise(resolve => setTimeout(resolve, 50));
+              } catch (homeError) {
+                // Ignore if home navigation fails, continue with article
+              }
+
               await api.call('events.publish', 'SYSTEM_KB_ARTICLE_SHOW', { data });
             } catch (error) {
               console.error("Failed to open KB article:", error);
