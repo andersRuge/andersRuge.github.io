@@ -2,20 +2,20 @@
   "name": "EU Hub - Your European Tech Stack",
   "short_name": "EU Hub",
   "description": "Switch to privacy-respecting European and open-source alternatives",
-  "start_url": "/",
+  "start_url": "/eu-hub/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#003399",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/icon.svg",
+      "src": "/eu-hub/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/favicon.svg",
+      "src": "/eu-hub/favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "maskable"
