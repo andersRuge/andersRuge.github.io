@@ -79,27 +79,21 @@
 
     async function refreshPuzzelToken(forceUpdate = false) {
       if (!puzzelApi || !puzzelInitialized) {
-        console.warn("Cannot refresh token: Puzzel not initialized");
         return null;
       }
 
       try {
         const token = await puzzelApi.call("auth.getPuzzelIDAccessToken");
         if (!token) {
-          console.warn("Token refresh returned empty token");
           return null;
         }
 
         const newTokenHash = simpleHash(token);
 
-        // Check if token has changed
         if (!forceUpdate && currentTokenHash === newTokenHash) {
-          console.log("Token check: unchanged at", new Date().toISOString());
           return token;
         }
 
-        // Token is different, update claims
-        const wasChanged = currentTokenHash !== null;
         currentTokenHash = newTokenHash;
         puzzelInfoData["auth.getPuzzelIDAccessToken"] = token;
 
@@ -121,18 +115,9 @@
           });
 
           window.pzl.api.setClaims(claims);
-
-          if (wasChanged) {
-            console.log("🔄 Token CHANGED and claims updated at", new Date().toISOString());
-            console.log("Token (first 50 chars):", token.substring(0, 50) + "...");
-          } else {
-            console.log("Token initialized at", new Date().toISOString());
-          }
-          return token;
         }
         return token;
       } catch (error) {
-        console.error("Failed to refresh Puzzel token:", error);
         return null;
       }
     }
@@ -164,7 +149,6 @@
 
           const articleId = parseInt(pzlArticleId, 10);
           if (isNaN(articleId)) {
-            console.error("Invalid pzlArticleId:", pzlArticleId);
             return;
           }
 
@@ -184,7 +168,6 @@
                 }
               });
             } catch (error) {
-              console.error("Failed to open KB article:", error);
               window.open(href, '_blank', 'noopener,noreferrer');
             }
           }
@@ -281,10 +264,6 @@
               clearInterval(checkPzlReady);
               console.error = originalConsoleError;
 
-              if (widgetLoadError) {
-                console.warn("Widget loaded but configuration error detected:", widgetLoadError);
-              }
-
               puzzelInitialized = true;
 
               if (typeof window.pzl.api.setClaims === "function") {
@@ -308,19 +287,13 @@
                 window.pzl.api.setClaims(claims);
               }
 
-              // Start token check interval
               setInterval(refreshPuzzelToken, TOKEN_CHECK_INTERVAL_MS);
-              console.log("Token check scheduled every 5 minutes (updates only when changed)");
-
-              // Expose refresh function globally for manual testing
               window.refreshPuzzelToken = refreshPuzzelToken;
 
-              // Refresh token when chat close/reload button is clicked
               document.addEventListener("click", function(e) {
                 const target = e.target.closest("#Icon_close, [title='Close chat']");
                 if (target) {
-                  console.log("Chat close/reload detected, refreshing token...");
-                  refreshPuzzelToken(true); // Force update
+                  refreshPuzzelToken(true);
                 }
               }, true);
 
@@ -360,7 +333,6 @@
         document.body.appendChild(loader);
 
       } catch (error) {
-        console.error("Puzzel-only flow failed:", error);
         statusEl.textContent = "Connection Error";
         const subtext = document.querySelector(".status-subtext");
         if (subtext) {
